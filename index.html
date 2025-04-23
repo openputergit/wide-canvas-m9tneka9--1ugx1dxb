@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Climate Change & Set Operations Visualization</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/venn.js@0.2.20/venn.min.js"></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        #venn-diagram { min-height: 300px; }
+        .loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="loading">
+        <div class="spinner"></div>
+    </div>
+
+    <nav class="bg-blue-600 text-white p-4">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-2xl font-bold">Climate & Set Operations Portal</h1>
+            <div class="space-x-4">
+                <button onclick="switchTab('climate')" class="hover:text-blue-200">जलवायु परिवर्तन</button>
+                <button onclick="switchTab('sets')" class="hover:text-blue-200">सेट ऑपरेशंस</button>
+            </div>
+        </div>
+    </nav>
+
+    <div id="climate" class="tab-content active">
+        <div class="container mx-auto p-4">
+            <h2 class="text-3xl font-bold mb-6 text-center">जलवायु परिवर्तन विश्लेषण</h2>
+            
+            <div class="grid md:grid-cols-2 gap-6">
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <h3 class="text-xl font-semibold mb-4">कारण और प्रभाव</h3>
+                    <div id="causes-chart" class="h-64"></div>
+                    <ul class="mt-4 space-y-2">
+                        <li><i class="bi bi-dot"></i> ग्रीनहाउस गैस उत्सर्जन</li>
+                        <li><i class="bi bi-dot"></i> वनों की कटाई</li>
+                        <li><i class="bi bi-dot"></i> औद्योगिक प्रदूषण</li>
+                    </ul>
+                </div>
+
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <h3 class="text-xl font-semibold mb-4">भविष्यवाणी मॉडल</h3>
+                    <div class="mb-4">
+                        <label class="block mb-2">वर्ष चुनें:</label>
+                        <input type="range" min="2023" max="2050" value="2030" class="w-full" id="yearSlider">
+                        <p id="selectedYear" class="text-center">2030</p>
+                    </div>
+                    <div id="prediction-chart" class="h-64"></div>
+                </div>
+
+                <div class="bg-white p-6 rounded-lg shadow md:col-span-2">
+                    <h3 class="text-xl font-semibold mb-4">डेटा इनपुट</h3>
+                    <form id="climateDataForm" class="grid md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block mb-2">तापमान (°C):</label>
+                            <input type="number" class="w-full p-2 border rounded" required>
+                        </div>
+                        <div>
+                            <label class="block mb-2">कार्बन उत्सर्जन (MT):</label>
+                            <input type="number" class="w-full p-2 border rounded" required>
+                        </div>
+                        <button type="submit" class="bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700 md:col-span-2">
+                            डेटा सबमिट करें
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="sets" class="tab-content">
+        <div class="container mx-auto p-4">
+            <h2 class="text-3xl font-bold mb-6 text-center">सेट ऑपरेशंस विजुअलाइजेशन</h2>
+            
+            <div class="grid md:grid-cols-2 gap-6">
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <h3 class="text-xl font-semibold mb-4">सेट इनपुट</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block mb-2">सेट A (कॉमा से अलग करें):</label>
+                            <input type="text" id="setA" class="w-full p-2 border rounded" placeholder="1,2,3,4">
+                        </div>
+                        <div>
+                            <label class="block mb-2">सेट B (कॉमा से अलग करें):</label>
+                            <input type="text" id="setB" class="w-full p-2 border rounded" placeholder="3,4,5,6">
+                        </div>
+                        <div>
+                            <label class="block mb-2">ऑपरेशन:</label>
+                            <select id="operation" class="w-full p-2 border rounded">
+                                <option value="union">Union (∪)</option>
+                                <option value="intersection">Intersection (∩)</option>
+                                <option value="difference">Difference (A-B)</option>
+                                <option value="symmetricDifference">Symmetric Difference (△)</option>
+                            </select>
+                        </div>
+                        <button onclick="performSetOperation()" class="bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700 w-full">
+                            परिणाम दिखाएं
+                        </button>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <h3 class="text-xl font-semibold mb-4">विजुअलाइजेशन</h3>
+                    <div id="venn-diagram"></div>
+                    <div id="result" class="mt-4 text-center font-semibold"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Tab switching
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.getElementById(tabId).classList.add('active');
+        }
+
+        // Climate Change Charts
+        let tempData = Array.from({length: 28}, (_, i) => ({
+            year: 2023 + i,
+            temp: 15 + Math.random() * 5
+        }));
+
+        const yearSlider = document.getElementById('yearSlider');
+        const selectedYear = document.getElementById('selectedYear');
+        
+        yearSlider.addEventListener('input', (e) => {
+            selectedYear.textContent = e.target.value;
+            updatePredictionChart(e.target.value);
+        });
+
+        function updatePredictionChart(year) {
+            const predictedTemp = tempData.find(d => d.year === parseInt(year))?.temp.toFixed(1);
+            document.getElementById('prediction-chart').innerHTML = `
+                <div class="flex items-center justify-center h-full">
+                    <div class="text-center">
+                        <div class="text-4xl font-bold text-blue-600">${predictedTemp}°C</div>
+                        <div class="text-gray-600">पूर्वानुमानित तापमान</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Set Operations
+        function performSetOperation() {
+            const setA = new Set(document.getElementById('setA').value.split(',').map(x => x.trim()));
+            const setB = new Set(document.getElementById('setB').value.split(',').map(x => x.trim()));
+            const operation = document.getElementById('operation').value;
+
+            let result = new Set();
+            let sets = [
+                {sets: ['A'], size: setA.size},
+                {sets: ['B'], size: setB.size},
+                {sets: ['A','B'], size: [...setA].filter(x => setB.has(x)).length}
+            ];
+
+            switch(operation) {
+                case 'union':
+                    result = new Set([...setA, ...setB]);
+                    break;
+                case 'intersection':
+                    result = new Set([...setA].filter(x => setB.has(x)));
+                    break;
+                case 'difference':
+                    result = new Set([...setA].filter(x => !setB.has(x)));
+                    break;
+                case 'symmetricDifference':
+                    result = new Set(
+                        [...setA].filter(x => !setB.has(x)).concat([...setB].filter(x => !setA.has(x)))
+                    );
+                    break;
+            }
+
+            // Draw Venn diagram
+            const chart = venn.VennDiagram()
+                .width(400)
+                .height(300);
+
+            d3.select("#venn-diagram").selectAll("*").remove();
+            d3.select("#venn-diagram")
+                .datum(sets)
+                .call(chart);
+
+            document.getElementById('result').textContent = 
+                `परिणाम: {${[...result].join(', ')}}`;
+        }
+
+        // Form submission
+        document.getElementById('climateDataForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const loading = document.querySelector('.loading');
+            loading.style.display = 'flex';
+
+            try {
+                // Simulate API call
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                alert('डेटा सफलतापूर्वक सबमिट किया गया!');
+            } catch (error) {
+                alert('एक त्रुटि हुई। कृपया पुनः प्रयास करें।');
+            } finally {
+                loading.style.display = 'none';
+            }
+        });
+
+        // Initialize charts
+        updatePredictionChart(2030);
+    </script>
+<script>document.body.addEventListener('wheel', e => { if (!e.ctrlKey) return; e.preventDefault(); return }, { passive: false })</script>
+	</body>
+</html>
